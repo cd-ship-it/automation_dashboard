@@ -1,0 +1,48 @@
+{
+  "projects": [
+    {
+      "id": "Heart-of-Shepherd",
+      "name": "Heart of Shepherd",
+      "project_root": "/Users/fredng/projects/heart",
+      "log": "/Users/fredng/projects/heart/logs/heart_finance_log.txt",
+      "script": "/Users/fredng/projects/heart/run_heart_finance.sh",
+      "commands": [
+        {
+          "id": "run",
+          "label": "Run",
+          "args": ["--force"]
+        }
+      ]
+    },
+    {
+      "id": "Pastoral-and-staff-reports",
+      "name": "Pastoral and staff reports",
+      "project_root": "/Users/fredng/projects/heart",
+      "log": "/Users/fredng/projects/heart/logs/pastoral_reports.log",
+      "script": "/Users/fredng/projects/heart/run_pastoral_reports.sh",
+      "commands": [
+        {
+          "id": "create",
+          "label": "Create New",
+          "args": ["--create"],
+          "input": ""
+        },
+        {
+          "id": "update-template",
+          "label": "Update Master Template",
+          "args": ["--update-template"]
+        },
+        {
+          "id": "export-links",
+          "label": "Export links",
+          "args": ["--export-links"]
+        },
+        {
+          "id": "all",
+          "label": "Export links + Update Master Template",
+          "args": ["--all"]
+        }
+      ]
+    }
+  ]
+}

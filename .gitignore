@@ -1,0 +1,3 @@
+# Ignore local overrides if you add secrets later
+.env
+.env.*
