@@ -9,13 +9,15 @@ PHP dashboard for weekly automation tasks: view project logs and manually re-run
 
 ```json
 {
+  "prod_path": "/home/customer/www/crosspointchurchsv.org/scripts/proj",
+  "dev_path": "/Users/fredng/projects",
   "projects": [
     {
       "id": "Heart-of-Shepherd",
       "name": "Heart of Shepherd",
-      "project_root": "/Users/you/projects/heart",
-      "log": "/Users/you/projects/heart/logs/heart_finance_log.txt",
-      "script": "/Users/you/projects/heart/run_heart_finance.sh",
+      "project_root": "{base}/heart",
+      "log": "{base}/heart/logs/heart_finance_log.txt",
+      "script": "{base}/heart/run_heart_finance.sh",
       "commands": [
         {
           "id": "run",
@@ -23,38 +25,20 @@ PHP dashboard for weekly automation tasks: view project logs and manually re-run
           "args": ["--force"]
         }
       ]
-    },
-    {
-      "id": "Pastoral-and-staff-reports",
-      "name": "Pastoral and staff reports",
-      "project_root": "/Users/you/projects/heart",
-      "log": "/Users/you/projects/heart/logs/pastoral_and_staff_reports_log.txt",
-      "script": "/Users/you/projects/heart/run_pastoral_and_staff_reports.sh",
-      "commands": [
-        {
-          "id": "create",
-          "label": "Create New",
-          "args": ["--create"],
-          "input": "Winky Tang"
-        },
-        {
-          "id": "update-template",
-          "label": "Update Master Template",
-          "args": ["--update-template"]
-        }
-      ]
     }
   ]
 }
 ```
 
-Paths work on macOS (`/Users/...`) and Linux (`/var/...`, `/home/...`, `/opt/...`).
+If `prod_path` exists as a directory, that is used as `{base}`; otherwise `{base}` is `dev_path`.
 
 | Level | Fields |
 |-------|--------|
+| Root | `prod_path`, `dev_path` |
 | Project | `id`, `name`, `log`, `script`, optional `project_root` |
 | Command | `id`, `label`, optional `args`, optional `input` |
 
+- Use `{base}` in path fields (also `{prod_path}` / `{dev_path}` if needed).
 - Shared `log` / `script` / `project_root` live on the project (do not repeat per command).
 - Optional `args` are passed to the script on Run.
 - Optional `input` (string) shows a text box prefilled with that value. On Run it is appended as a double-quoted argument, e.g. `script.sh --create "Winky Tang"`.

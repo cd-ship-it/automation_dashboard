@@ -1,11 +1,13 @@
 {
+  "prod_path": "/home/customer/www/crosspointchurchsv.org/scripts/proj",
+  "dev_path": "/Users/fredng/projects",
   "projects": [
     {
       "id": "Heart-of-Shepherd",
       "name": "Heart of Shepherd",
-      "project_root": "/Users/fredng/projects/heart",
-      "log": "/Users/fredng/projects/heart/logs/heart_finance_log.txt",
-      "script": "/Users/fredng/projects/heart/run_heart_finance.sh",
+      "project_root": "{base}/heart",
+      "log": "{base}/heart/logs/heart_finance_log.txt",
+      "script": "{base}/heart/run_heart_finance.sh",
       "commands": [
         {
           "id": "run",
@@ -17,9 +19,9 @@
     {
       "id": "Pastoral-and-staff-reports",
       "name": "Pastoral and staff reports",
-      "project_root": "/Users/fredng/projects/heart",
-      "log": "/Users/fredng/projects/heart/logs/pastoral_reports.log",
-      "script": "/Users/fredng/projects/heart/run_pastoral_reports.sh",
+      "project_root": "{base}/heart",
+      "log": "{base}/heart/logs/pastoral_reports.log",
+      "script": "{base}/heart/run_pastoral_reports.sh",
       "commands": [
         {
           "id": "create",

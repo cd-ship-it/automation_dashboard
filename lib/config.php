@@ -3,9 +3,48 @@
 declare(strict_types=1);
 
 /**
+ * Resolve which projects root to use: prod_path if that directory exists, else dev_path.
+ *
+ * @param array<string, mixed> $data
+ */
+function resolve_base_path(array $data): string
+{
+    if (!isset($data['prod_path'], $data['dev_path'])
+        || !is_string($data['prod_path'])
+        || !is_string($data['dev_path'])
+        || $data['prod_path'] === ''
+        || $data['dev_path'] === ''
+    ) {
+        throw new RuntimeException('config.json must define non-empty "prod_path" and "dev_path".');
+    }
+
+    $prod = rtrim($data['prod_path'], "/\\");
+    $dev = rtrim($data['dev_path'], "/\\");
+
+    return is_dir($prod) ? $prod : $dev;
+}
+
+/**
+ * Expand {base}, {prod_path}, and {dev_path} placeholders in a path string.
+ *
+ * @param array<string, mixed> $data
+ */
+function expand_config_path(string $value, string $base, array $data): string
+{
+    $prod = rtrim((string) $data['prod_path'], "/\\");
+    $dev = rtrim((string) $data['dev_path'], "/\\");
+
+    return str_replace(
+        ['{base}', '{prod_path}', '{dev_path}'],
+        [$base, $prod, $dev],
+        $value
+    );
+}
+
+/**
  * Load and validate dashboard config.
  *
- * @return array{projects: list<array{id: string, name: string, project_root: string|null, log: string, script: string, commands: list<array{id: string, label: string, args: list<string>, input: string|null}>}>}
+ * @return array{base_path: string, is_prod: bool, projects: list<array{id: string, name: string, project_root: string|null, log: string, script: string, commands: list<array{id: string, label: string, args: list<string>, input: string|null}>}>}
  */
 function load_config(): array
 {
@@ -24,6 +63,10 @@ function load_config(): array
     if (!is_array($data) || !isset($data['projects']) || !is_array($data['projects'])) {
         throw new RuntimeException('config.json must contain a "projects" array.');
     }
+
+    $base = resolve_base_path($data);
+    $prod = rtrim((string) $data['prod_path'], "/\\");
+    $is_prod = is_dir($prod) && $base === $prod;
 
     $projects = [];
     $seen_ids = [];
@@ -53,8 +96,11 @@ function load_config(): array
             if (!is_string($project['project_root']) || $project['project_root'] === '') {
                 throw new RuntimeException("Project \"{$project['id']}\" project_root must be a non-empty string.");
             }
-            $project_root = $project['project_root'];
+            $project_root = expand_config_path($project['project_root'], $base, $data);
         }
+
+        $log = expand_config_path($project['log'], $base, $data);
+        $script = expand_config_path($project['script'], $base, $data);
 
         if (!isset($project['commands']) || !is_array($project['commands']) || $project['commands'] === []) {
             throw new RuntimeException("Project \"{$project['id']}\" must have a non-empty commands array.");
@@ -116,13 +162,17 @@ function load_config(): array
             'id' => $project['id'],
             'name' => $project['name'],
             'project_root' => $project_root,
-            'log' => $project['log'],
-            'script' => $project['script'],
+            'log' => $log,
+            'script' => $script,
             'commands' => $commands,
         ];
     }
 
-    return ['projects' => $projects];
+    return [
+        'base_path' => $base,
+        'is_prod' => $is_prod,
+        'projects' => $projects,
+    ];
 }
 
 /**
