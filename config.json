@@ -6,6 +6,7 @@
       "id": "Website-Astro-Builder",
       "name": "Website Astro Builder",
       "project_root": "{base}/crosspointweb3.0",
+      "use_php_queue": true,
       "log": "{base}/crosspointweb3.0/logs/website_build.log",
       "script": "{base}/crosspointweb3.0/buildhere.sh",
       "commands": [

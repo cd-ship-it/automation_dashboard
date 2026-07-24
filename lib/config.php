@@ -44,7 +44,7 @@ function expand_config_path(string $value, string $base, array $data): string
 /**
  * Load and validate dashboard config.
  *
- * @return array{base_path: string, is_prod: bool, projects: list<array{id: string, name: string, project_root: string|null, log: string, script: string, commands: list<array{id: string, label: string, args: list<string>, input: string|null}>}>}
+ * @return array{base_path: string, is_prod: bool, projects: list<array{id: string, name: string, project_root: string|null, log: string, script: string, use_php_queue: bool, commands: list<array{id: string, label: string, args: list<string>, input: string|null}>}>}
  */
 function load_config(): array
 {
@@ -101,6 +101,14 @@ function load_config(): array
 
         $log = expand_config_path($project['log'], $base, $data);
         $script = expand_config_path($project['script'], $base, $data);
+
+        $use_php_queue = false;
+        if (isset($project['use_php_queue'])) {
+            if (!is_bool($project['use_php_queue'])) {
+                throw new RuntimeException("Project \"{$project['id']}\" use_php_queue must be true or false.");
+            }
+            $use_php_queue = $project['use_php_queue'];
+        }
 
         if (!isset($project['commands']) || !is_array($project['commands']) || $project['commands'] === []) {
             throw new RuntimeException("Project \"{$project['id']}\" must have a non-empty commands array.");
@@ -164,6 +172,7 @@ function load_config(): array
             'project_root' => $project_root,
             'log' => $log,
             'script' => $script,
+            'use_php_queue' => $use_php_queue,
             'commands' => $commands,
         ];
     }
@@ -176,7 +185,7 @@ function load_config(): array
 }
 
 /**
- * @return array{id: string, name: string, project_root: string|null, log: string, script: string, commands: list<array{id: string, label: string, args: list<string>, input: string|null}>}|null
+ * @return array{id: string, name: string, project_root: string|null, log: string, script: string, use_php_queue: bool, commands: list<array{id: string, label: string, args: list<string>, input: string|null}>}|null
  */
 function find_project(string $id): ?array
 {

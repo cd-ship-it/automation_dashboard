@@ -107,13 +107,26 @@ $command_line = escapeshellarg($script);
 if ($arg_parts !== []) {
     $command_line .= ' ' . implode(' ', $arg_parts);
 }
-$command_line .= ' 2>&1';
-exec($command_line, $output, $exit_code);
+
+$queued = $project['use_php_queue'];
+
+if ($queued) {
+    // Detach with nohup so PHP can return while the script keeps running
+    // (shared hosts like SiteGround do not provide `at` / atd).
+    exec(
+        'nohup ' . $command_line . ' > /dev/null 2>&1 & echo $!',
+        $output,
+        $exit_code
+    );
+} else {
+    exec($command_line . ' 2>&1', $output, $exit_code);
+}
 
 $elapsed_ms = (int) round((microtime(true) - $started) * 1000);
 
 echo json_encode([
     'ok' => $exit_code === 0,
+    'queued' => $queued,
     'exit_code' => $exit_code,
     'elapsed_ms' => $elapsed_ms,
     'output' => implode("\n", $output),
@@ -121,6 +134,7 @@ echo json_encode([
         'id' => $project['id'],
         'name' => $project['name'],
         'script' => $project['script'],
+        'use_php_queue' => $project['use_php_queue'],
     ],
     'command' => [
         'id' => $command['id'],

@@ -114,8 +114,16 @@
       }
     }
 
+    const usesQueue = card.dataset.queued === "1";
+
     setCardBusy(card, true);
-    setStatus(card, 'Running "' + label + '"... this may take a while.', "busy");
+    setStatus(
+      card,
+      usesQueue
+        ? 'Starting "' + label + '" in the background...'
+        : 'Running "' + label + '"... this may take a while.',
+      "busy"
+    );
 
     try {
       const res = await fetch(apiUrl("/api/run.php"), {
@@ -131,14 +139,20 @@
         }),
       });
       const data = await parseJson(res);
+      const queued = data.queued === true;
+      const failPrefix = queued
+        ? "Could not start background job"
+        : "Script failed with exit code " + data.exit_code;
       const failMessage = !data.ok
-        ? (data.error || "Script failed with exit code " + data.exit_code) +
+        ? (data.error || failPrefix) +
           (data.elapsed_ms != null ? " (" + data.elapsed_ms + " ms)" : "") +
           (data.output ? "\n\n" + data.output : "")
         : null;
 
       if (failMessage) {
         setStatus(card, failMessage + "\n\nRefreshing log...", "err");
+      } else if (queued) {
+        setStatus(card, '"' + label + '" started in the background. Refreshing log...', "ok");
       } else {
         setStatus(
           card,
@@ -158,6 +172,17 @@
 
       if (failMessage) {
         setStatus(card, failMessage + "\n\nLog refreshed after failure.", "err");
+      } else if (queued) {
+        const pid = (data.output || "").trim();
+        setStatus(
+          card,
+          '"' +
+            label +
+            '" started in the background' +
+            (pid ? " (PID " + pid + ")" : "") +
+            ". Press Refresh to see new log output.",
+          "ok"
+        );
       } else {
         setStatus(card, '"' + label + '" finished. Log refreshed.', "ok");
       }

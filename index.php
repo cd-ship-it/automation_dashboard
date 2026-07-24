@@ -91,6 +91,7 @@ $js_v = (string) (@filemtime(__DIR__ . '/assets/dashboard.js') ?: time());
             data-project-id="<?= h($project['id']) ?>"
             data-script-ok="<?= $card['script_ok'] ? '1' : '0' ?>"
             data-log-ok="<?= $card['log_ok'] ? '1' : '0' ?>"
+            data-queued="<?= $project['use_php_queue'] ? '1' : '0' ?>"
           >
             <div class="card-header">
               <h2><?= h($project['name']) ?></h2>
