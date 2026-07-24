@@ -43,7 +43,7 @@ If `prod_path` exists as a directory, that is used as `{base}`; otherwise `{base
 - Optional `args` are passed to the script on Run.
 - Optional `input` (string) shows a text box prefilled with that value. On Run it is appended as a double-quoted argument, e.g. `script.sh --create "Winky Tang"`.
 - Optional `project_root`: the runner `chdir`s there before executing the script.
-- Optional `use_php_queue` (`true`/`false`, default `false`): instead of running the script inline and waiting, the job is started in the background with `nohup <script + args> > /dev/null 2>&1 &`. The request returns as soon as the process is spawned (response includes the PID). Watch the project's log file for progress. Works on shared hosts like SiteGround that do not provide `at`.
+- Optional `use_php_queue` (`true`/`false`, default `false`): instead of running the script inline and waiting, the job is started in the background with `nohup bash -c '<script + args>; echo $? > <log>.run_status'`. The browser then polls `api/job_status.php` every 2s (up to ~20 minutes), refreshes the log pane, and reports success/failure from the exit code written to `<log>.run_status`. Works on shared hosts like SiteGround that do not provide `at`.
 
 3. Ensure the web server user can:
    - **read** each `log` file

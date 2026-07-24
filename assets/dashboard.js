@@ -1,8 +1,14 @@
 (function () {
   const BASE = (document.body.dataset.base || "").replace(/\/$/, "");
+  const POLL_INTERVAL_MS = 2000;
+  const POLL_MAX_ATTEMPTS = 600; // ~20 minutes
 
   function apiUrl(path) {
     return (BASE ? BASE : "") + path;
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   function setStatus(card, message, kind) {
@@ -96,6 +102,81 @@
     }
   }
 
+  async function pollQueuedJob(card, label, pid) {
+    const id = card.dataset.projectId;
+    const pidQuery = pid ? "&pid=" + encodeURIComponent(String(pid)) : "";
+
+    for (let attempt = 1; attempt <= POLL_MAX_ATTEMPTS; attempt++) {
+      setStatus(
+        card,
+        'Running "' +
+          label +
+          '" in the background' +
+          (pid ? " (PID " + pid + ")" : "") +
+          "... updating log (" +
+          attempt +
+          ")",
+        "busy"
+      );
+
+      await sleep(POLL_INTERVAL_MS);
+
+      const res = await fetch(
+        apiUrl("/api/job_status.php?id=" + encodeURIComponent(id) + pidQuery),
+        { headers: { Accept: "application/json" } }
+      );
+      const data = await parseJson(res);
+      if (!data.ok) {
+        throw new Error(data.error || "Failed to check job status.");
+      }
+
+      renderLog(card, data);
+
+      if (data.running) {
+        continue;
+      }
+
+      if (data.exit_code === 0) {
+        setStatus(
+          card,
+          '"' + label + '" finished successfully. Log refreshed.',
+          "ok"
+        );
+        return;
+      }
+
+      if (data.exit_code != null) {
+        setStatus(
+          card,
+          '"' +
+            label +
+            '" failed with exit code ' +
+            data.exit_code +
+            ". Log refreshed.",
+          "err"
+        );
+        return;
+      }
+
+      setStatus(
+        card,
+        '"' +
+          label +
+          '" is no longer running, but no exit status was recorded. Log refreshed.',
+        "err"
+      );
+      return;
+    }
+
+    setStatus(
+      card,
+      '"' +
+        label +
+        '" is still running after polling timed out. Press Refresh later to check the log.',
+      "err"
+    );
+  }
+
   async function runCommand(card, row) {
     const id = card.dataset.projectId;
     const commandId = row.dataset.commandId;
@@ -151,15 +232,26 @@
 
       if (failMessage) {
         setStatus(card, failMessage + "\n\nRefreshing log...", "err");
-      } else if (queued) {
-        setStatus(card, '"' + label + '" started in the background. Refreshing log...', "ok");
-      } else {
-        setStatus(
-          card,
-          '"' + label + '" finished in ' + data.elapsed_ms + " ms. Refreshing log...",
-          "ok"
-        );
+        const logRes = await fetch(apiUrl("/api/log.php?id=" + encodeURIComponent(id)), {
+          headers: { Accept: "application/json" },
+        });
+        const logData = await parseJson(logRes);
+        if (logData.ok) renderLog(card, logData);
+        setStatus(card, failMessage + "\n\nLog refreshed after failure.", "err");
+        return;
       }
+
+      if (queued) {
+        const pid = data.pid || (data.output || "").trim() || null;
+        await pollQueuedJob(card, label, pid);
+        return;
+      }
+
+      setStatus(
+        card,
+        '"' + label + '" finished in ' + data.elapsed_ms + " ms. Refreshing log...",
+        "ok"
+      );
 
       const logRes = await fetch(apiUrl("/api/log.php?id=" + encodeURIComponent(id)), {
         headers: { Accept: "application/json" },
@@ -169,23 +261,7 @@
         throw new Error(logData.error || "Failed to load log.");
       }
       renderLog(card, logData);
-
-      if (failMessage) {
-        setStatus(card, failMessage + "\n\nLog refreshed after failure.", "err");
-      } else if (queued) {
-        const pid = (data.output || "").trim();
-        setStatus(
-          card,
-          '"' +
-            label +
-            '" started in the background' +
-            (pid ? " (PID " + pid + ")" : "") +
-            ". Press Refresh to see new log output.",
-          "ok"
-        );
-      } else {
-        setStatus(card, '"' + label + '" finished. Log refreshed.', "ok");
-      }
+      setStatus(card, '"' + label + '" finished. Log refreshed.', "ok");
     } catch (err) {
       setStatus(card, err.message || "Run failed.", "err");
     } finally {

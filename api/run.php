@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/lib/config.php';
+require_once dirname(__DIR__) . '/lib/job.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -109,15 +110,25 @@ if ($arg_parts !== []) {
 }
 
 $queued = $project['use_php_queue'];
+$pid = null;
 
 if ($queued) {
     // Detach with nohup so PHP can return while the script keeps running
     // (shared hosts like SiteGround do not provide `at` / atd).
+    // Write exit code to a sidecar status file when finished for polling.
+    $status_path = run_status_path($project['log']);
+    write_run_status_running($status_path);
+
+    $wrapper = $command_line . '; echo $? > ' . escapeshellarg($status_path);
     exec(
-        'nohup ' . $command_line . ' > /dev/null 2>&1 & echo $!',
+        'nohup bash -c ' . escapeshellarg($wrapper) . ' > /dev/null 2>&1 & echo $!',
         $output,
         $exit_code
     );
+
+    if (isset($output[0]) && preg_match('/^\d+$/', trim($output[0]))) {
+        $pid = (int) trim($output[0]);
+    }
 } else {
     exec($command_line . ' 2>&1', $output, $exit_code);
 }
@@ -127,6 +138,7 @@ $elapsed_ms = (int) round((microtime(true) - $started) * 1000);
 echo json_encode([
     'ok' => $exit_code === 0,
     'queued' => $queued,
+    'pid' => $pid,
     'exit_code' => $exit_code,
     'elapsed_ms' => $elapsed_ms,
     'output' => implode("\n", $output),
