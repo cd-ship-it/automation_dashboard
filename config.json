@@ -3,6 +3,20 @@
   "dev_path": "/Users/fredng/projects",
   "projects": [
     {
+      "id": "Website Astro Builder",
+      "name": "Website Astro Builder",
+      "project_root": "{base}/crosspointweb3.0",
+      "log": "{base}/crosspointweb3.0/logs/website-astro-builder_log.txt",
+      "script": "{base}/crosspointweb3.0/buildhere.sh",
+      "commands": [
+        {
+          "id": "build",
+          "label": "Build",
+          "args": ["--build"]
+        }
+      ]
+    },
+    {
       "id": "Heart-of-Shepherd",
       "name": "Heart of Shepherd",
       "project_root": "{base}/heart",
