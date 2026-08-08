@@ -5,8 +5,10 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/lib/config.php';
 require_once dirname(__DIR__) . '/lib/log.php';
 require_once dirname(__DIR__) . '/lib/job.php';
+require_once dirname(__DIR__) . '/lib/http.php';
 
 header('Content-Type: application/json; charset=utf-8');
+send_no_cache_headers();
 
 $id = isset($_GET['id']) ? (string) $_GET['id'] : '';
 $pid = isset($_GET['pid']) && $_GET['pid'] !== '' ? (int) $_GET['pid'] : null;
@@ -32,6 +34,8 @@ if ($project === null) {
 }
 
 $status_path = run_status_path($project['log']);
+clearstatcache(true, $project['log']);
+clearstatcache(true, $status_path);
 $status = read_run_status($status_path, $pid);
 $log = read_log($project['log']);
 

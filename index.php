@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/lib/config.php';
 require_once __DIR__ . '/lib/log.php';
+require_once __DIR__ . '/lib/http.php';
+
+send_no_cache_headers();
 
 $config_error = null;
 $projects = [];
+$env_label = '';
+$resolved_base = '';
 
 try {
     $config = load_config();
     $projects = $config['projects'];
+    $resolved_base = $config['base_path'];
+    $env_label = $config['is_prod'] ? 'prod' : 'dev';
 } catch (Throwable $e) {
     $config_error = $e->getMessage();
 }
@@ -19,6 +26,15 @@ function h(?string $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
+
+function format_mtime(?int $ts): string
+{
+    if ($ts === null) {
+        return '—';
+    }
+    return date('Y-m-d H:i:s', $ts);
+}
+
 
 $cards = [];
 foreach ($projects as $project) {
@@ -70,7 +86,13 @@ $js_v = (string) (@filemtime(__DIR__ . '/assets/dashboard.js') ?: time());
     <header>
       <div>
         <h1>Automation Dashboard</h1>
-        <p class="subtitle">View logs and manually re-run weekly tasks</p>
+        <p class="subtitle">
+          View logs and manually re-run weekly tasks
+          <?php if ($env_label !== ''): ?>
+            · <span class="env-badge"><?= h($env_label) ?></span>
+            · base <code><?= h($resolved_base) ?></code>
+          <?php endif; ?>
+        </p>
       </div>
     </header>
 
@@ -136,6 +158,11 @@ $js_v = (string) (@filemtime(__DIR__ . '/assets/dashboard.js') ?: time());
             </div>
 
             <p class="status card-status" aria-live="polite"></p>
+
+            <div class="log-meta">
+              <span>Log: <code class="log-path"><?= h($project['log']) ?></code></span>
+              <span>Modified: <span class="log-mtime"><?= h(format_mtime($log['modified'])) ?></span></span>
+            </div>
 
             <div class="log-panel">
               <div class="log-header">

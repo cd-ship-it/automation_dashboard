@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/lib/config.php';
 require_once dirname(__DIR__) . '/lib/log.php';
+require_once dirname(__DIR__) . '/lib/http.php';
 
 header('Content-Type: application/json; charset=utf-8');
+send_no_cache_headers();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

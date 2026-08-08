@@ -4,11 +4,31 @@
   const POLL_MAX_ATTEMPTS = 600; // ~20 minutes
 
   function apiUrl(path) {
-    return (BASE ? BASE : "") + path;
+    const sep = path.includes("?") ? "&" : "?";
+    return (BASE ? BASE : "") + path + sep + "_t=" + Date.now();
   }
 
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function formatMtime(ts) {
+    if (ts == null) return "—";
+    const d = new Date(ts * 1000);
+    const pad = (n) => String(n).padStart(2, "0");
+    return (
+      d.getFullYear() +
+      "-" +
+      pad(d.getMonth() + 1) +
+      "-" +
+      pad(d.getDate()) +
+      " " +
+      pad(d.getHours()) +
+      ":" +
+      pad(d.getMinutes()) +
+      ":" +
+      pad(d.getSeconds())
+    );
   }
 
   function setStatus(card, message, kind) {
@@ -39,10 +59,15 @@
 
   function renderLog(card, payload) {
     const log = payload.log;
+    const project = payload.project || {};
     const pre = card.querySelector(".log-content");
     const hint = card.querySelector(".log-hint");
+    const pathEl = card.querySelector(".log-path");
+    const mtimeEl = card.querySelector(".log-mtime");
 
     if (hint) hint.textContent = log.truncated ? "last 2000 lines" : "full file";
+    if (pathEl && project.log) pathEl.textContent = project.log;
+    if (mtimeEl) mtimeEl.textContent = formatMtime(log.modified);
     if (pre) {
       pre.textContent = log.content || "";
       pre.classList.toggle("empty", !log.content);
@@ -61,13 +86,18 @@
     }
   }
 
+  async function fetchJson(path, options) {
+    const opts = options || {};
+    opts.cache = "no-store";
+    opts.headers = Object.assign({ Accept: "application/json" }, opts.headers || {});
+    const res = await fetch(apiUrl(path), opts);
+    return parseJson(res);
+  }
+
   async function refreshLog(card, statusMessage) {
     const id = card.dataset.projectId;
     setStatus(card, "Loading log...", "busy");
-    const res = await fetch(apiUrl("/api/log.php?id=" + encodeURIComponent(id)), {
-      headers: { Accept: "application/json" },
-    });
-    const data = await parseJson(res);
+    const data = await fetchJson("/api/log.php?id=" + encodeURIComponent(id));
     if (!data.ok) {
       throw new Error(data.error || "Failed to load log.");
     }
@@ -81,15 +111,11 @@
     setCardBusy(card, true);
 
     try {
-      const res = await fetch(apiUrl("/api/clear_log.php"), {
+      const data = await fetchJson("/api/clear_log.php", {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: id }),
       });
-      const data = await parseJson(res);
       if (!data.ok) {
         throw new Error(data.error || "Failed to clear log.");
       }
@@ -121,11 +147,9 @@
 
       await sleep(POLL_INTERVAL_MS);
 
-      const res = await fetch(
-        apiUrl("/api/job_status.php?id=" + encodeURIComponent(id) + pidQuery),
-        { headers: { Accept: "application/json" } }
+      const data = await fetchJson(
+        "/api/job_status.php?id=" + encodeURIComponent(id) + pidQuery
       );
-      const data = await parseJson(res);
       if (!data.ok) {
         throw new Error(data.error || "Failed to check job status.");
       }
@@ -207,19 +231,15 @@
     );
 
     try {
-      const res = await fetch(apiUrl("/api/run.php"), {
+      const data = await fetchJson("/api/run.php", {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: id,
           command_id: commandId,
           input: input,
         }),
       });
-      const data = await parseJson(res);
       const queued = data.queued === true;
       const failPrefix = queued
         ? "Could not start background job"
@@ -232,10 +252,7 @@
 
       if (failMessage) {
         setStatus(card, failMessage + "\n\nRefreshing log...", "err");
-        const logRes = await fetch(apiUrl("/api/log.php?id=" + encodeURIComponent(id)), {
-          headers: { Accept: "application/json" },
-        });
-        const logData = await parseJson(logRes);
+        const logData = await fetchJson("/api/log.php?id=" + encodeURIComponent(id));
         if (logData.ok) renderLog(card, logData);
         setStatus(card, failMessage + "\n\nLog refreshed after failure.", "err");
         return;
@@ -253,10 +270,7 @@
         "ok"
       );
 
-      const logRes = await fetch(apiUrl("/api/log.php?id=" + encodeURIComponent(id)), {
-        headers: { Accept: "application/json" },
-      });
-      const logData = await parseJson(logRes);
+      const logData = await fetchJson("/api/log.php?id=" + encodeURIComponent(id));
       if (!logData.ok) {
         throw new Error(logData.error || "Failed to load log.");
       }

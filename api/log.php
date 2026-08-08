@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/lib/config.php';
 require_once dirname(__DIR__) . '/lib/log.php';
+require_once dirname(__DIR__) . '/lib/http.php';
 
 header('Content-Type: application/json; charset=utf-8');
+send_no_cache_headers();
 
 $id = isset($_GET['id']) ? (string) $_GET['id'] : '';
 if ($id === '') {
@@ -28,6 +30,7 @@ if ($project === null) {
     exit;
 }
 
+clearstatcache(true, $project['log']);
 $log = read_log($project['log']);
 
 echo json_encode([
