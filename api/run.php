@@ -109,6 +109,15 @@ if ($arg_parts !== []) {
     $command_line .= ' ' . implode(' ', $arg_parts);
 }
 
+// Shared hosts (e.g. SiteGround) cap process/thread count tightly. OpenBLAS/OMP
+// otherwise try to spawn dozens of threads and fail with pthread_create errors.
+$thread_env =
+    'OPENBLAS_NUM_THREADS=1 '
+    . 'OMP_NUM_THREADS=1 '
+    . 'MKL_NUM_THREADS=1 '
+    . 'NUMEXPR_NUM_THREADS=1 '
+    . 'VECLIB_MAXIMUM_THREADS=1 ';
+
 $queued = $project['use_php_queue'];
 $pid = null;
 
@@ -119,7 +128,7 @@ if ($queued) {
     $status_path = run_status_path($project['log']);
     write_run_status_running($status_path);
 
-    $wrapper = $command_line . '; echo $? > ' . escapeshellarg($status_path);
+    $wrapper = $thread_env . $command_line . '; echo $? > ' . escapeshellarg($status_path);
     exec(
         'nohup bash -c ' . escapeshellarg($wrapper) . ' > /dev/null 2>&1 & echo $!',
         $output,
@@ -130,7 +139,7 @@ if ($queued) {
         $pid = (int) trim($output[0]);
     }
 } else {
-    exec($command_line . ' 2>&1', $output, $exit_code);
+    exec($thread_env . $command_line . ' 2>&1', $output, $exit_code);
 }
 
 $elapsed_ms = (int) round((microtime(true) - $started) * 1000);
